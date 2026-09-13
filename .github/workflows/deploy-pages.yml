@@ -1,116 +1,26 @@
-name: Deploy to GitHub Pages
+name: Deploy Astro site to Pages
+
 on:
   push:
-    branches: [main, 'feature/**', 'codex/**']
-  delete:
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
-# Serialize the complete read/modify/publish transaction. Queue pending branches too.
 concurrency:
-  group: github-pages-deployment
-  queue: max
+  group: pages
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    if: >-
-      (github.event_name == 'delete' && github.event.ref_type == 'branch' &&
-        (startsWith(github.event.ref, 'feature/') || startsWith(github.event.ref, 'codex/'))) ||
-      (github.event_name != 'delete' && (github.ref_name == 'main' ||
-        startsWith(github.ref_name, 'feature/') || startsWith(github.ref_name, 'codex/')))
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}${{ steps.target.outputs.directory }}
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-      - name: Resolve target (including deleted branch)
-        id: target
-        run: node scripts/pages.mjs metadata
-      - name: Install dependencies
-        if: github.event_name != 'delete'
-        run: npm ci
-      - name: Validate
-        if: github.event_name != 'delete'
-        run: npm run check
-      - name: Build target
-        if: github.event_name != 'delete'
-        run: npm run build
-        env:
-          BASE_PATH: ${{ steps.target.outputs.base }}
-          BUILD_COMMIT: ${{ github.sha }}
-      - name: Install browser
-        if: github.event_name != 'delete'
-        run: npx playwright install --with-deps chromium
-      - name: Check the built preview in a real browser
-        if: github.event_name != 'delete'
-        run: npm run test:browser
-        env:
-          TEST_BASE_PATH: ${{ steps.target.outputs.base }}
-      - name: Load persistent site
-        run: |
-          if git ls-remote --exit-code --heads origin pages-content > /dev/null; then
-            git fetch origin pages-content
-            git worktree add --detach .pages-site FETCH_HEAD
-          else
-            result=$?
-            if [ "$result" -ne 2 ]; then exit "$result"; fi
-            git init .pages-site
-            git -C .pages-site checkout --orphan pages-content
-          fi
-      - name: Update target while preserving other deployments
-        run: node scripts/pages.mjs assemble .pages-site dist
-        env:
-          DEPLOY_BRANCH: ${{ steps.target.outputs.branch }}
-      - name: Store the assembled site
-        run: |
-          git -C .pages-site config user.name 'github-actions[bot]'
-          git -C .pages-site config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git -C .pages-site add --all
-          if ! git -C .pages-site diff --cached --quiet; then
-            git -C .pages-site commit -m "Update Pages content for $DEPLOY_BRANCH"
-          fi
-          # Push through the authenticated source checkout, also on first initialization.
-          git fetch ./.pages-site HEAD
-          git push origin FETCH_HEAD:refs/heads/pages-content
-        env:
-          DEPLOY_BRANCH: ${{ steps.target.outputs.branch }}
-      - uses: actions/configure-pages@v5
-      - name: Prepare artifact without Git metadata
-        run: |
-          mkdir .pages-artifact
-          rsync -a --exclude='.git' .pages-site/ .pages-artifact/
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: .pages-artifact
-      - name: Publish complete site
-        id: deployment
-        uses: actions/deploy-pages@v4
-      - name: Show test URL
-        run: |
-          if [ "$EVENT_NAME" = delete ]; then
-            echo "Removed preview for $DEPLOY_BRANCH" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "Test URL: ${PAGE_URL%/}/${TARGET_DIRECTORY}${TARGET_DIRECTORY:+/}" >> "$GITHUB_STEP_SUMMARY"
-            echo "Build commit: $BUILD_COMMIT" >> "$GITHUB_STEP_SUMMARY"
-          fi
-        env:
-          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
-          TARGET_DIRECTORY: ${{ steps.target.outputs.directory }}
-          DEPLOY_BRANCH: ${{ steps.target.outputs.branch }}
-          EVENT_NAME: ${{ github.event_name }}
-          BUILD_COMMIT: ${{ github.sha }}
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
