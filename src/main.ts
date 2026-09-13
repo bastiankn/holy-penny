@@ -1,13 +1,25 @@
 /**
  * Main entry point for Holy Penny WebAR Game
- * Phase 2: Camera Implementation
+ * Wires Lanes A-D through the App class.
  */
 
-import { App, app } from './app/App';
+import { App } from './app/App';
 
-// Export app for testing
+function isJestEnv(): boolean {
+  try {
+    const g = globalThis as unknown as Record<string, unknown>;
+    const proc = g['process'] as { env?: Record<string, unknown> } | undefined;
+    return !!proc?.env?.['JEST_WORKER_ID'];
+  } catch {
+    return false;
+  }
+}
+
+// Singleton for the browser only: importing this module under Jest/jsdom
+// must stay side-effect free (no renderer, no DOM nodes).
+let app: App | undefined;
+if (typeof window !== 'undefined' && !isJestEnv()) {
+  app = new App();
+}
+
 export { App, app };
-
-// Initialize the application
-console.log('Holy Penny - Phase 2: Camera Implementation');
-console.log('App initialized. Click "START AR" to begin.');

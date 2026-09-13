@@ -37,17 +37,26 @@ export class StartScreen {
     this.container.style.zIndex = '1000';
     this.container.style.color = 'white';
     this.container.style.fontFamily = 'Arial, sans-serif';
+    // iOS polish: respect notches/home indicator, avoid double-tap zoom,
+    // remove the grey tap highlight on touch.
+    this.container.style.paddingTop = 'env(safe-area-inset-top, 0px)';
+    this.container.style.paddingLeft = 'env(safe-area-inset-left, 0px)';
+    this.container.style.paddingRight = 'env(safe-area-inset-right, 0px)';
+    this.container.style.paddingBottom = 'env(safe-area-inset-bottom, 0px)';
+    this.container.style.boxSizing = 'border-box';
+    this.container.style.touchAction = 'manipulation';
+    this.container.style.setProperty('-webkit-tap-highlight-color', 'transparent');
 
     // Title
     this.titleElement = document.createElement('h1');
-    this.titleElement.textContent = this.options.title;
+    this.titleElement.textContent = this.options.title ?? 'COIN HUNT';
     this.titleElement.style.fontSize = '2.5rem';
     this.titleElement.style.marginBottom = '2rem';
     this.titleElement.style.textAlign = 'center';
 
     // Button
     this.buttonElement = document.createElement('button');
-    this.buttonElement.textContent = this.options.buttonText;
+    this.buttonElement.textContent = this.options.buttonText ?? 'START AR';
     this.buttonElement.style.padding = '1rem 2rem';
     this.buttonElement.style.fontSize = '1.2rem';
     this.buttonElement.style.backgroundColor = '#4CAF50';
@@ -56,6 +65,12 @@ export class StartScreen {
     this.buttonElement.style.borderRadius = '5px';
     this.buttonElement.style.cursor = 'pointer';
     this.buttonElement.style.transition = 'background-color 0.3s';
+    // iOS polish: 44px minimum touch target, no double-tap zoom delay,
+    // no grey tap highlight.
+    this.buttonElement.style.minWidth = '44px';
+    this.buttonElement.style.minHeight = '44px';
+    this.buttonElement.style.touchAction = 'manipulation';
+    this.buttonElement.style.setProperty('-webkit-tap-highlight-color', 'transparent');
 
     this.buttonElement.addEventListener('mouseenter', () => {
       this.buttonElement.style.backgroundColor = '#45a049';
