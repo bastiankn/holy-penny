@@ -1,6 +1,7 @@
 export interface HUDOptions {
   onRestart?: () => void;
   total?: number;
+  simulated?: boolean;
 }
 
 export class HUD {
@@ -11,11 +12,13 @@ export class HUD {
   private finishedElement: HTMLElement;
   private restartButton: HTMLButtonElement;
   private total: number;
+  private readonly simulated: boolean;
   private destroyed = false;
   private handleRestart: () => void;
 
   constructor(root?: HTMLElement, opts?: HUDOptions) {
     this.total = opts?.total ?? 1;
+    this.simulated = opts?.simulated ?? false;
     this.handleRestart = () => {
       opts?.onRestart?.();
     };
@@ -120,7 +123,7 @@ export class HUD {
     if (m === null || Number.isNaN(m)) {
       this.distanceElement.textContent = '—';
     } else {
-      this.distanceElement.textContent = `COIN ${m.toFixed(2)} m`;
+      this.distanceElement.textContent = `COIN ${m.toFixed(2)} ${this.simulated ? 'demo units' : 'm'}`;
     }
   }
 

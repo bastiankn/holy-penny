@@ -5,6 +5,10 @@
 
 export interface StartScreenOptions {
   title?: string;
+  description?: string;
+  buildCommit?: string;
+  alternateHref?: string;
+  alternateText?: string;
   buttonText?: string;
   onStart?: () => void | Promise<void>;
 }
@@ -28,7 +32,7 @@ export class StartScreen {
     this.container.style.top = '0';
     this.container.style.left = '0';
     this.container.style.width = '100vw';
-    this.container.style.height = '100vh';
+    this.container.style.height = '100%';
     this.container.style.display = 'flex';
     this.container.style.flexDirection = 'column';
     this.container.style.alignItems = 'center';
@@ -100,7 +104,24 @@ export class StartScreen {
 
     // Assemble
     this.container.appendChild(this.titleElement);
+    const description = document.createElement('p');
+    description.textContent = options.description ?? '';
+    description.style.cssText = 'text-align: center; max-width: 320px; padding: 0 16px';
+    this.container.appendChild(description);
     this.container.appendChild(this.buttonElement);
+    if (options.alternateHref) {
+      const alternate = document.createElement('a');
+      alternate.href = options.alternateHref;
+      alternate.textContent = options.alternateText ?? 'Desktop demo';
+      alternate.style.cssText =
+        'color: white; padding: 16px; min-height: 44px; box-sizing: border-box';
+      this.container.appendChild(alternate);
+    }
+    if (options.buildCommit) {
+      const build = document.createElement('small');
+      build.textContent = `Build ${options.buildCommit}`;
+      this.container.appendChild(build);
+    }
     this.container.appendChild(this.statusElement);
 
     document.body.appendChild(this.container);

@@ -14,8 +14,10 @@ export class TrackingStatus {
   private stateElement: HTMLElement;
   private detailElement: HTMLElement;
   private destroyed = false;
+  private readonly simulated: boolean;
 
-  constructor(root?: HTMLElement) {
+  constructor(root?: HTMLElement, opts?: { simulated?: boolean; buildCommit?: string }) {
+    this.simulated = opts?.simulated ?? false;
     this.element = root ?? document.createElement('div');
     const isOwnRoot = root === undefined;
     this.element.setAttribute('data-testid', 'tracking-status');
@@ -53,6 +55,13 @@ export class TrackingStatus {
     this.detailElement.style.borderRadius = '6px';
     this.detailElement.style.display = 'none';
 
+    if (opts?.buildCommit) {
+      const build = document.createElement('div');
+      build.textContent = `Build ${opts.buildCommit}`;
+      build.dataset.testid = 'build-commit';
+      build.style.cssText = 'color: white; background: #222; padding: 6px 10px; border-radius: 6px';
+      this.element.appendChild(build);
+    }
     this.element.appendChild(this.stateElement);
     this.element.appendChild(this.detailElement);
 
@@ -66,7 +75,9 @@ export class TrackingStatus {
       return;
     }
     this.element.setAttribute('data-state', s);
-    this.stateElement.textContent = `Tracking: ${s}`;
+    this.stateElement.textContent = this.simulated
+      ? `SIMULATED: ${s} — room tracking not connected`
+      : `Tracking: ${s}`;
 
     if (s === 'LOST') {
       this.element.classList.add('warning');

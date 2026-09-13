@@ -30,3 +30,9 @@ coverage/
 # Temporary files
 tmp/
 temp/
+
+# Browser checks and Pages assembly
+test-results/
+playwright-report/
+.pages-site/
+.pages-artifact/

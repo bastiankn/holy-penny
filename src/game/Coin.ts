@@ -23,7 +23,7 @@ export interface CoinOptions {
   spinSpeed?: number;
   bobAmp?: number;
   bobFreq?: number;
-  glbUrl?: string;
+  glbUrl?: string | null;
 }
 
 export interface CoinPosition {
@@ -85,7 +85,7 @@ export class Coin {
   private readonly spinSpeed: number;
   private readonly bobAmp: number;
   private readonly bobFreq: number;
-  private readonly glbUrl: string;
+  private readonly glbUrl: string | null;
 
   private placed = false;
   private collected = false;
@@ -105,7 +105,7 @@ export class Coin {
     this.spinSpeed = opts?.spinSpeed ?? DEFAULT_SPIN_SPEED;
     this.bobAmp = opts?.bobAmp ?? DEFAULT_BOB_AMP;
     this.bobFreq = opts?.bobFreq ?? DEFAULT_BOB_FREQ;
-    this.glbUrl = opts?.glbUrl ?? defaultGlbUrl();
+    this.glbUrl = opts?.glbUrl === null ? null : (opts?.glbUrl ?? defaultGlbUrl());
   }
 
   /** Place the coin once; further calls are no-ops until `reset`. */
@@ -235,7 +235,7 @@ export class Coin {
   private createProceduralMesh(THREE: typeof import('three')): unknown {
     try {
       const geometry = new THREE.CylinderGeometry(this.radius, this.radius, this.coinHeight, 32);
-      if (!isObject(geometry) || !('position' in geometry)) {
+      if (!geometry.getAttribute('position')) {
         return null;
       }
       if (typeof (geometry as { rotateX?: unknown }).rotateX === 'function') {
@@ -243,8 +243,9 @@ export class Coin {
       }
       const material = new THREE.MeshStandardMaterial({
         color: 0xffc93c,
-        metalness: 0.9,
-        roughness: 0.25,
+        // A partially diffuse material stays visible without an environment map.
+        metalness: 0.35,
+        roughness: 0.4,
       });
       const mesh = new THREE.Mesh(geometry, material);
       if (!isObject(mesh) || !('position' in mesh) || !('rotation' in mesh)) {
@@ -259,7 +260,7 @@ export class Coin {
 
   private async tryLoadGlb(): Promise<void> {
     try {
-      if (this.scene === null || this.disposed || this.mesh === null) {
+      if (this.scene === null || this.disposed || this.mesh === null || this.glbUrl === null) {
         return;
       }
       if (typeof this.scene.add !== 'function') {

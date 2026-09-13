@@ -1,29 +1,21 @@
 import { defineConfig } from 'vite';
-import path from 'path';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
-// Get base path from environment or use default
-// For GitHub Pages, BASE_PATH is set by the deployment workflow
-const basePath = process.env.BASE_PATH || '/holy-penny/';
+function buildCommit(): string {
+  if (process.env.BUILD_COMMIT) return process.env.BUILD_COMMIT.slice(0, 8);
+  try {
+    return `${execFileSync('git', ['rev-parse', '--short=8', 'HEAD']).toString().trim()}-local`;
+  } catch {
+    return 'local';
+  }
+}
 
-export default defineConfig({
-  base: basePath,
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
-  build: {
-    outDir: 'dist',
-    assetsDir: 'assets',
-    sourcemap: true,
-  },
-  server: {
-    port: 3000,
-    open: true,
-    // Enable HTTPS for local camera testing
-    https: {
-      key: './localhost-key.pem',
-      cert: './localhost-cert.pem',
-    },
-  },
-});
+export default defineConfig(({ command }) => ({
+  base: process.env.BASE_PATH || (command === 'serve' ? '/' : '/holy-penny/'),
+  define: { __BUILD_COMMIT__: JSON.stringify(buildCommit()) },
+  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+  build: { outDir: 'dist', assetsDir: 'assets', sourcemap: true },
+  // Localhost is a secure context for camera access. Phone tests use HTTPS Pages previews.
+  server: { host: '127.0.0.1', port: 3000, strictPort: true },
+}));

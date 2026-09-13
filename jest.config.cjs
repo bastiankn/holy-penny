@@ -10,9 +10,5 @@ module.exports = {
   collectCoverageFrom: ['src/**/*.ts', '!src/**/*.test.ts', '!src/**/*.d.ts'],
   coverageDirectory: 'coverage',
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
-  globals: {
-    'ts-jest': {
-      tsconfig: 'tsconfig.json',
-    },
-  },
+  transform: { '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }] },
 };

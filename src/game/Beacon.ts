@@ -169,7 +169,7 @@ export class Beacon {
         1,
         true
       );
-      if (!isObject(geometry) || !('position' in geometry)) {
+      if (!geometry.getAttribute('position')) {
         return null;
       }
       const material = new THREE.MeshBasicMaterial({
