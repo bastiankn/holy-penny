@@ -90,11 +90,12 @@ export class App {
       this.videoTexture.minFilter = THREE.LinearFilter;
       this.videoTexture.magFilter = THREE.LinearFilter;
 
-      // Create a plane to display the video
-      const geometry = new THREE.PlaneGeometry(16, 9);
+      // Create a plane to display the video (portrait aspect ratio 9:16)
+      const geometry = new THREE.PlaneGeometry(9, 16);
       const material = new THREE.MeshBasicMaterial({ map: this.videoTexture });
       this.videoMesh = new THREE.Mesh(geometry, material);
       this.videoMesh.position.set(0, 0, -10);
+      this.videoMesh.rotation.x = Math.PI / 2; // Rotate to be upright in 3D space
       this.scene.add(this.videoMesh);
 
       // Hide start screen
@@ -183,13 +184,14 @@ export class App {
 
     this.renderer.setSize(width, height);
 
-    // Adjust video mesh aspect ratio to match camera
+    // Adjust video mesh aspect ratio to match camera (portrait)
     if (this.videoMesh && this.cameraSource.isStreaming()) {
       const video = this.cameraSource.getVideoElement();
       const videoAspect = video.videoWidth / video.videoHeight;
-      const meshAspect = 16 / 9;
+      const meshAspect = 9 / 16; // Portrait aspect ratio
 
       if (videoAspect > 0) {
+        // For portrait video, we want the mesh to maintain 9:16 ratio
         this.videoMesh.scale.set(meshAspect / videoAspect, 1, 1);
       }
     }

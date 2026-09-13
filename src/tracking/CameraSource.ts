@@ -32,10 +32,14 @@ export class CameraSource {
 
   constructor(options: CameraSourceOptions = {}) {
     this.options = {
-      video: true,
+      video: {
+        facingMode: 'environment',
+        width: { ideal: 720 },
+        height: { ideal: 1280 },
+      },
       audio: false,
-      width: 1280,
-      height: 720,
+      width: 720,
+      height: 1280,
       facingMode: 'environment',
       ...options,
     };
