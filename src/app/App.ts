@@ -90,12 +90,17 @@ export class App {
       this.videoTexture.minFilter = THREE.LinearFilter;
       this.videoTexture.magFilter = THREE.LinearFilter;
 
-      // Create a plane to display the video (portrait aspect ratio 9:16)
-      const geometry = new THREE.PlaneGeometry(9, 16);
+      // Create a plane to display the video
+      // Use the actual video dimensions for correct aspect ratio
+      const videoWidth = video.videoWidth || 720;
+      const videoHeight = video.videoHeight || 1280;
+      const aspectRatio = videoWidth / videoHeight;
+
+      // Create plane with correct aspect ratio (width, height)
+      const geometry = new THREE.PlaneGeometry(10 * aspectRatio, 10);
       const material = new THREE.MeshBasicMaterial({ map: this.videoTexture });
       this.videoMesh = new THREE.Mesh(geometry, material);
       this.videoMesh.position.set(0, 0, -10);
-      this.videoMesh.rotation.x = Math.PI / 2; // Rotate to be upright in 3D space
       this.scene.add(this.videoMesh);
 
       // Hide start screen
