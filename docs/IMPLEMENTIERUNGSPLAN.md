@@ -1,3 +1,9 @@
+> Status September 2026: Stage one provides an explicitly simulated camera/rendering
+> demo. Real AlvaAR tracking remains pending. The current setup, implemented
+> deployment behavior, and acceptance checks are documented in
+> [STAGE-ONE-TESTING.md](STAGE-ONE-TESTING.md). Preview paths include a short hash
+> to avoid branch-name collisions. The plan below describes the broader target.
+
 Implementierungsplan – WebAR Coin Game
 
 1. Ziel

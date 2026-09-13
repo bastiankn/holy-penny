@@ -78,6 +78,9 @@ export class CameraSource {
       // Get video element
       const video = this.getVideoElement();
 
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Camera access requires HTTPS or localhost and a supported browser.');
+      }
       // Request camera access
       const constraints: MediaStreamConstraints = {
         video: this.options.video,
@@ -101,6 +104,7 @@ export class CameraSource {
       return this.stream;
     } catch (error) {
       const err = error as Error;
+      this.stop();
       this.state = {
         hasPermission: false,
         isStreaming: false,

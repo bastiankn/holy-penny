@@ -1,21 +1,11 @@
-/**
- * App - Main application class
- * Orchestrates camera, tracking, rendering, and game logic.
- *
- * Phase 2 (camera video plane) + Phases 4+11 (Lanes A-D wiring, iOS UX):
- * - CameraSource for getUserMedia video
- * - AlvaTrackingProvider (or injected TrackingProvider) for 6DoF poses
- * - Player / ARWorld / Coin / Beacon / Game (Lanes B+C)
- * - HUD / TrackingStatus / StartScreen (Lane D + iOS polish)
- * - SoundPlayer / TrackingMetrics (Phase 11)
- *
- * The constructor never throws when WebGL is unavailable (jsdom tests):
- * renderer/scene/camera creation falls back to no-op stubs under Jest.
+/** Coordinates the stage-one camera/rendering demo and injected tracking providers.
+ * Real WebGL is used in the browser; jsdom wiring tests use renderer stubs.
  */
 
 import { CameraSource, cameraSource } from '../tracking/CameraSource';
 import type { TrackingProvider, CameraPose } from '../tracking/TrackingProvider';
-import { AlvaTrackingProvider } from '../tracking/AlvaTrackingProvider';
+import { SimulationTrackingProvider } from '../tracking/SimulationTrackingProvider';
+import { CameraBackground } from '../rendering/CameraBackground';
 import { StartScreen } from '../ui/StartScreen';
 import { HUD } from '../ui/HUD';
 import { TrackingStatus } from '../ui/TrackingStatus';
@@ -90,6 +80,8 @@ export interface AppGame {
 
 export interface AppOptions {
   canvas?: HTMLCanvasElement;
+  cameraEnabled?: boolean;
+  buildCommit?: string;
   cameraOptions?: ConstructorParameters<typeof CameraSource>[0];
   cameraSource?: AppCameraSource;
   tracking?: TrackingProvider;
@@ -120,8 +112,10 @@ export class App {
   private scene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
   private renderer!: THREE.WebGLRenderer;
-  private videoTexture: THREE.VideoTexture | null = null;
-  private videoMesh: THREE.Mesh | null = null;
+  private background: CameraBackground | null = null;
+  private readonly cameraEnabled: boolean;
+  private readonly simulated: boolean;
+  private rendererError: Error | null = null;
   private animationFrameId = 0;
 
   private tracking: TrackingProvider;
@@ -165,6 +159,8 @@ export class App {
   };
 
   constructor(options: AppOptions = {}) {
+    this.cameraEnabled = options.cameraEnabled ?? true;
+    this.simulated = options.tracking === undefined;
     this.cameraSource = options.cameraSource
       ? options.cameraSource
       : options.cameraOptions
@@ -174,17 +170,21 @@ export class App {
     // Initialize Three.js (stubs under Jest where WebGL is unavailable).
     this.initThreeJS(options.canvas);
 
-    // Tracking + game world (Lane A/B). Video element is not available
-    // until the camera starts, so the provider starts with null.
-    this.tracking =
-      options.tracking ??
-      new AlvaTrackingProvider(null, { trackingWidth: 640, trackingHeight: 480 });
+    // Real world tracking is the stage-two milestone; the default is explicitly simulated.
+    this.tracking = options.tracking ?? new SimulationTrackingProvider();
     this.player = options.player ?? new Player();
     this.world = options.world ?? new ARWorld();
-    this.coin = options.coin ?? new Coin(this.scene);
+    this.coin = options.coin ?? new Coin(this.scene, { glbUrl: null });
     this.beacon = options.beacon ?? new Beacon(this.scene);
-    this.hud = options.hud ?? new HUD(undefined, { onRestart: () => this.game.restart?.() });
-    this.status = options.status ?? new TrackingStatus();
+    this.hud =
+      options.hud ??
+      new HUD(undefined, { onRestart: () => this.game.restart?.(), simulated: this.simulated });
+    this.status =
+      options.status ??
+      new TrackingStatus(undefined, {
+        simulated: this.simulated,
+        buildCommit: options.buildCommit,
+      });
     this.sound = options.sound ?? new SoundPlayer(this.resolveBaseUrl());
     this.metrics = options.metrics ?? new TrackingMetrics();
     this.game =
@@ -206,6 +206,11 @@ export class App {
     // Initialize UI
     this.startScreen = new StartScreen({
       onStart: () => this.startAR(),
+      buttonText: this.cameraEnabled ? 'START CAMERA DEMO' : 'START DESKTOP DEMO',
+      description: this.simulated ? 'Simulated position — room tracking is not connected yet.' : '',
+      buildCommit: options.buildCommit,
+      alternateHref: this.cameraEnabled ? '?demo=1' : '?',
+      alternateText: this.cameraEnabled ? 'Try without a camera' : 'Use the camera instead',
     });
 
     // Handle window resize / orientation and backgrounding (Phase 11).
@@ -235,7 +240,7 @@ export class App {
     try {
       // Scene
       this.scene = new THREE.Scene();
-      this.scene.background = new THREE.Color(0x000000);
+      this.scene.background = null;
 
       // Camera
       const aspect = window.innerWidth / window.innerHeight;
@@ -244,11 +249,14 @@ export class App {
 
       // Renderer
       const rendererOpts: THREE.WebGLRendererParameters = canvas
-        ? { antialias: true, canvas }
-        : { antialias: true };
+        ? { antialias: true, alpha: true, canvas }
+        : { antialias: true, alpha: true };
       this.renderer = new THREE.WebGLRenderer(rendererOpts);
       this.renderer.setSize(window.innerWidth, window.innerHeight);
-      this.renderer.setPixelRatio(window.devicePixelRatio);
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      this.renderer.setClearColor(0x000000, 0);
+      this.renderer.domElement.dataset.testid = 'ar-canvas';
+      Object.assign(this.renderer.domElement.style, { position: 'fixed', inset: '0', zIndex: '1' });
       document.body.appendChild(this.renderer.domElement);
 
       // Add ambient light
@@ -260,7 +268,10 @@ export class App {
       directionalLight.position.set(5, 10, 7);
       this.scene.add(directionalLight);
     } catch {
-      // WebGL unavailable: degrade to stubs instead of throwing from the constructor.
+      this.rendererError = new Error(
+        'WebGL is unavailable. Enable hardware acceleration or try another browser.'
+      );
+      // Keep the start screen usable so it can explain the rendering failure.
       this.scene = this.createStubScene();
       this.camera = this.createStubCamera();
       this.renderer = this.createStubRenderer();
@@ -347,15 +358,14 @@ export class App {
     }
     this.starting = true;
     try {
-      this.startScreen.setStatus('Starting camera...');
+      if (this.rendererError) throw this.rendererError;
+      this.startScreen.setStatus(this.cameraEnabled ? 'Starting camera...' : 'Starting demo...');
       this.startScreen.setButtonEnabled(false);
 
-      // Start camera
-      await this.cameraSource.start();
-
-      // Get video element and set up the background plane (existing behavior).
-      const video = this.cameraSource.getVideoElement();
-      this.setupVideoPlane(video);
+      if (this.cameraEnabled) {
+        await this.cameraSource.start();
+        this.background = new CameraBackground(this.cameraSource.getVideoElement());
+      }
 
       // Start tracking, then drive the game through READY -> PLAYING.
       this.startScreen.setStatus('Starting tracking...');
@@ -378,45 +388,14 @@ export class App {
       this.started = true;
       this.startAnimation();
 
-      this.startScreen.setStatus('Tracking active');
+      this.startScreen.setStatus(this.simulated ? 'Simulation active' : 'Tracking active');
     } catch (error) {
+      this.stopCamera();
       const message = error instanceof Error ? error.message : 'Unknown error';
       this.startScreen.setStatus(`AR start failed: ${message}`);
       this.startScreen.setButtonEnabled(true);
     } finally {
       this.starting = false;
-    }
-  }
-
-  /**
-   * Create the camera-feed background plane. Falls back to "no plane"
-   * (game still runs) when video/THREE is unavailable, and never throws.
-   */
-  private setupVideoPlane(video: HTMLVideoElement): void {
-    try {
-      if (isTestEnv()) {
-        return;
-      }
-      // Create video texture
-      this.videoTexture = new THREE.VideoTexture(video);
-      this.videoTexture.minFilter = THREE.LinearFilter;
-      this.videoTexture.magFilter = THREE.LinearFilter;
-
-      // Create a plane to display the video
-      // Use the actual video dimensions for correct aspect ratio
-      const videoWidth = video.videoWidth || 720;
-      const videoHeight = video.videoHeight || 1280;
-      const aspectRatio = videoWidth / videoHeight;
-
-      // Create plane with correct aspect ratio (width, height)
-      const geometry = new THREE.PlaneGeometry(10 * aspectRatio, 10);
-      const material = new THREE.MeshBasicMaterial({ map: this.videoTexture });
-      this.videoMesh = new THREE.Mesh(geometry, material);
-      this.videoMesh.position.set(0, 0, -10);
-      this.scene.add(this.videoMesh);
-    } catch {
-      this.videoTexture = null;
-      this.videoMesh = null;
     }
   }
 
@@ -440,17 +419,8 @@ export class App {
 
     this.cameraSource.stop();
 
-    // Remove video mesh
-    if (this.videoMesh) {
-      this.scene.remove(this.videoMesh);
-      this.videoMesh = null;
-    }
-
-    // Dispose video texture
-    if (this.videoTexture) {
-      this.videoTexture.dispose();
-      this.videoTexture = null;
-    }
+    this.background?.hide();
+    this.background = null;
 
     // Hide overlays
     this.setOverlaysVisible(false);
@@ -481,11 +451,6 @@ export class App {
     const dt = this.lastFrameMs > 0 ? Math.min((now - this.lastFrameMs) / 1000, 0.5) : 1 / 60;
     this.lastFrameMs = now;
     this.elapsedSec += dt;
-
-    // Update video texture if available
-    if (this.videoTexture) {
-      this.videoTexture.needsUpdate = true;
-    }
 
     try {
       const pose = this.tracking.getPose();
@@ -581,18 +546,6 @@ export class App {
     this.camera.updateProjectionMatrix();
 
     this.renderer.setSize(width, height);
-
-    // Adjust video mesh aspect ratio to match camera (portrait)
-    if (this.videoMesh && this.cameraSource.isStreaming()) {
-      const video = this.cameraSource.getVideoElement();
-      const videoAspect = video.videoWidth / video.videoHeight;
-      const meshAspect = 9 / 16; // Portrait aspect ratio
-
-      if (videoAspect > 0) {
-        // For portrait video, we want the mesh to maintain 9:16 ratio
-        this.videoMesh.scale.set(meshAspect / videoAspect, 1, 1);
-      }
-    }
   }
 
   /**

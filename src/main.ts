@@ -19,7 +19,10 @@ function isJestEnv(): boolean {
 // must stay side-effect free (no renderer, no DOM nodes).
 let app: App | undefined;
 if (typeof window !== 'undefined' && !isJestEnv()) {
-  app = new App();
+  app = new App({
+    cameraEnabled: new URLSearchParams(window.location.search).get('demo') !== '1',
+    buildCommit: __BUILD_COMMIT__,
+  });
 }
 
 export { App, app };

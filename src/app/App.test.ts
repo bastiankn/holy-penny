@@ -241,3 +241,33 @@ describe('App wiring', () => {
     expect(app.isRunning()).toBe(false);
   });
 });
+
+it('desktop demo starts without requesting or creating a camera feed', async () => {
+  const fakes = makeFakes();
+  const app = new App({ ...fakes, cameraEnabled: false });
+  try {
+    await app.startAR();
+    expect(app.isRunning()).toBe(true);
+    expect(fakes.cameraSource.start).not.toHaveBeenCalled();
+    expect(fakes.cameraSource.getVideoElement).not.toHaveBeenCalled();
+  } finally {
+    app.destroy();
+  }
+});
+
+it('places the video behind the canvas with screen-sized, undistorted cropping', async () => {
+  const fakes = makeFakes();
+  const app = new App(fakes);
+  try {
+    await app.startAR();
+    const video = fakes.cameraSource.getVideoElement();
+    expect(video.style.position).toBe('fixed');
+    expect(video.style.objectFit).toBe('cover');
+    expect(video.style.width).toBe('100%');
+    expect(video.style.height).toBe('100%');
+    window.dispatchEvent(new Event('orientationchange'));
+    expect(video.style.objectFit).toBe('cover');
+  } finally {
+    app.destroy();
+  }
+});
