@@ -1,8 +1,9 @@
-> Status September 2026: Stage one provides an explicitly simulated camera/rendering
-> demo. Real AlvaAR tracking remains pending. The current setup, implemented
-> deployment behavior, and acceptance checks are documented in
-> [STAGE-ONE-TESTING.md](STAGE-ONE-TESTING.md). Preview paths include a short hash
-> to avoid branch-name collisions. The plan below describes the broader target.
+> Status September 2026: Stage two implements the real AlvaAR tracking spike on a
+> separate branch. The camera route uses a reduced tracking frame, applies AlvaAR
+> poses to Three.js, and displays a fixed cube plus tracking diagnostics. Physical
+> iPhone validation remains the go/no-go gate; see
+> [STAGE-TWO-TESTING.md](STAGE-TWO-TESTING.md). The simulated desktop route remains
+> available at `?demo=1`.
 
 Implementierungsplan – WebAR Coin Game
 

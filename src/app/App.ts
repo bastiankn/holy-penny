@@ -1,11 +1,13 @@
-/** Coordinates the stage-one camera/rendering demo and injected tracking providers.
+/** Coordinates the camera, tracking, rendering demo and injected providers.
  * Real WebGL is used in the browser; jsdom wiring tests use renderer stubs.
  */
 
 import { CameraSource, cameraSource } from '../tracking/CameraSource';
 import type { TrackingProvider, CameraPose } from '../tracking/TrackingProvider';
 import { SimulationTrackingProvider } from '../tracking/SimulationTrackingProvider';
+import { AlvaTrackingProvider, alvaVerticalFieldOfView } from '../tracking/AlvaTrackingProvider';
 import { CameraBackground } from '../rendering/CameraBackground';
+import { TrackingAnchor } from '../rendering/TrackingAnchor';
 import { StartScreen } from '../ui/StartScreen';
 import { HUD } from '../ui/HUD';
 import { TrackingStatus } from '../ui/TrackingStatus';
@@ -115,6 +117,10 @@ export class App {
   private background: CameraBackground | null = null;
   private readonly cameraEnabled: boolean;
   private readonly simulated: boolean;
+  private readonly trackingSpike: boolean;
+  private readonly trackingSize: { width: number; height: number };
+  private trackingAnchor: TrackingAnchor | null = null;
+  private trackingGuide: HTMLElement | null = null;
   private rendererError: Error | null = null;
   private animationFrameId = 0;
 
@@ -160,7 +166,8 @@ export class App {
 
   constructor(options: AppOptions = {}) {
     this.cameraEnabled = options.cameraEnabled ?? true;
-    this.simulated = options.tracking === undefined;
+    this.trackingSpike = options.tracking === undefined && this.cameraEnabled;
+    this.trackingSize = this.getInitialTrackingSize();
     this.cameraSource = options.cameraSource
       ? options.cameraSource
       : options.cameraOptions
@@ -170,8 +177,21 @@ export class App {
     // Initialize Three.js (stubs under Jest where WebGL is unavailable).
     this.initThreeJS(options.canvas);
 
-    // Real world tracking is the stage-two milestone; the default is explicitly simulated.
-    this.tracking = options.tracking ?? new SimulationTrackingProvider();
+    this.tracking =
+      options.tracking ??
+      (this.cameraEnabled
+        ? new AlvaTrackingProvider(() => this.cameraSource.getVideoElement(), {
+            trackingWidth: this.trackingSize.width,
+            trackingHeight: this.trackingSize.height,
+            fieldOfView: 45,
+            targetFps: 30,
+          })
+        : new SimulationTrackingProvider());
+    this.simulated = this.tracking instanceof SimulationTrackingProvider;
+    if (this.trackingSpike && !isTestEnv()) {
+      this.trackingAnchor = new TrackingAnchor(this.scene);
+      this.trackingGuide = this.createTrackingGuide();
+    }
     this.player = options.player ?? new Player();
     this.world = options.world ?? new ARWorld();
     this.coin = options.coin ?? new Coin(this.scene, { glbUrl: null });
@@ -206,8 +226,10 @@ export class App {
     // Initialize UI
     this.startScreen = new StartScreen({
       onStart: () => this.startAR(),
-      buttonText: this.cameraEnabled ? 'START CAMERA DEMO' : 'START DESKTOP DEMO',
-      description: this.simulated ? 'Simulated position — room tracking is not connected yet.' : '',
+      buttonText: this.cameraEnabled ? 'START AR TRACKING' : 'START DESKTOP DEMO',
+      description: this.simulated
+        ? 'Simulated position — room tracking is not connected.'
+        : 'AlvaAR world tracking — move slowly until the cube appears.',
       buildCommit: options.buildCommit,
       alternateHref: this.cameraEnabled ? '?demo=1' : '?',
       alternateText: this.cameraEnabled ? 'Try without a camera' : 'Use the camera instead',
@@ -244,7 +266,10 @@ export class App {
 
       // Camera
       const aspect = window.innerWidth / window.innerHeight;
-      this.camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+      const fieldOfView = this.trackingSpike
+        ? alvaVerticalFieldOfView(this.trackingSize.width, this.trackingSize.height, 45)
+        : 75;
+      this.camera = new THREE.PerspectiveCamera(fieldOfView, aspect, 0.1, 1000);
       this.camera.position.set(0, 0, 5);
 
       // Renderer
@@ -348,6 +373,40 @@ export class App {
     return '/';
   }
 
+  private getInitialTrackingSize(): { width: number; height: number } {
+    const aspect = window.innerWidth / window.innerHeight;
+    const even = (value: number): number => Math.max(2, Math.round(value / 2) * 2);
+    return aspect >= 1
+      ? { width: 640, height: even(640 / aspect) }
+      : { width: even(640 * aspect), height: 640 };
+  }
+
+  private createTrackingGuide(): HTMLElement {
+    const guide = document.createElement('div');
+    guide.dataset.testid = 'tracking-guide';
+    guide.style.cssText =
+      'position:fixed;top:calc(env(safe-area-inset-top, 0px) + 12px);left:50%;' +
+      'transform:translateX(-50%);z-index:500;max-width:min(88vw,520px);padding:10px 14px;' +
+      'border-radius:10px;background:rgba(0,0,0,.65);color:white;text-align:center;' +
+      'font:600 14px/1.35 Arial,sans-serif;pointer-events:none;display:none';
+    guide.textContent = 'Move your phone slowly and point at detailed, well-lit surfaces.';
+    document.body.appendChild(guide);
+    return guide;
+  }
+
+  private updateTrackingGuide(state: string): void {
+    if (this.trackingGuide === null) return;
+    if (state === 'ACTIVE') {
+      this.trackingGuide.textContent =
+        'Tracking active — walk around and check that the cube stays fixed.';
+    } else if (state === 'LOST') {
+      this.trackingGuide.textContent = 'Tracking lost — return to the last view and move slowly.';
+    } else {
+      this.trackingGuide.textContent =
+        'Move your phone slowly and point at detailed, well-lit surfaces.';
+    }
+  }
+
   /**
    * Start the full AR session: camera -> tracking -> game.
    * Guarded against double-tap; failures surface on the StartScreen.
@@ -379,8 +438,10 @@ export class App {
       }
       this.trackingUnsubscribe = this.tracking.onStateChange((s) => {
         this.status.setTracking(s);
+        this.updateTrackingGuide(s);
       });
       this.status.setTracking(this.tracking.getState());
+      this.updateTrackingGuide(this.tracking.getState());
 
       // Hide start screen, reveal HUD/status, start the loop.
       this.startScreen.hide();
@@ -388,7 +449,9 @@ export class App {
       this.started = true;
       this.startAnimation();
 
-      this.startScreen.setStatus(this.simulated ? 'Simulation active' : 'Tracking active');
+      this.startScreen.setStatus(
+        this.simulated ? 'Simulation active' : 'AlvaAR ready — move slowly to initialize'
+      );
     } catch (error) {
       this.stopCamera();
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -421,6 +484,7 @@ export class App {
 
     this.background?.hide();
     this.background = null;
+    this.trackingAnchor?.reset();
 
     // Hide overlays
     this.setOverlaysVisible(false);
@@ -456,11 +520,14 @@ export class App {
       const pose = this.tracking.getPose();
       if (pose) {
         this.applyPoseToCamera(pose);
+        this.trackingAnchor?.placeFromFirstPose(pose);
       }
       this.status.setTracking(this.tracking.getState(), this.buildTrackingInfo(pose));
-      this.coin.update?.(dt, this.elapsedSec);
-      this.beacon.update?.(dt, this.elapsedSec);
-      this.game.update(dt);
+      if (!this.trackingSpike) {
+        this.coin.update?.(dt, this.elapsedSec);
+        this.beacon.update?.(dt, this.elapsedSec);
+        this.game.update(dt);
+      }
       this.metrics.recordFrame(pose);
     } catch {
       // Swallow per-frame errors to keep the loop alive.
@@ -518,10 +585,13 @@ export class App {
   private setOverlaysVisible(visible: boolean): void {
     const display = visible ? 'flex' : 'none';
     if (this.hud.element) {
-      this.hud.element.style.display = display;
+      this.hud.element.style.display = visible && !this.trackingSpike ? 'flex' : 'none';
     }
     if (this.status.element) {
       this.status.element.style.display = display;
+    }
+    if (this.trackingGuide) {
+      this.trackingGuide.style.display = visible && this.trackingSpike ? 'block' : 'none';
     }
   }
 
@@ -574,6 +644,10 @@ export class App {
     } catch {
       // Ignore teardown failures.
     }
+    this.trackingAnchor?.dispose();
+    this.trackingAnchor = null;
+    this.trackingGuide?.remove();
+    this.trackingGuide = null;
 
     // Clean up Three.js
     this.renderer.dispose();

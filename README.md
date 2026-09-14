@@ -2,10 +2,11 @@
 
 A browser-based coin game built with TypeScript, Vite and Three.js.
 
-**Current milestone: stage-one camera and rendering demo.** The coin and beacon
-are rendered over a live camera feed, but the camera pose is explicitly simulated.
-Moving your phone does not move the simulated player. Real AlvaAR world tracking,
-metric distance calibration, and physical-device tracking validation are stage two.
+**Current milestone: Stage 2 AlvaAR tracking spike.** The camera route now sends a
+reduced-resolution video frame through the pinned AlvaAR runtime, applies real poses
+to the Three.js camera, and places a simple cube for stability testing. The coin game
+is intentionally paused on this route until physical iPhone testing gives a tracking
+go/no-go result. `?demo=1` remains the explicitly simulated desktop demo.
 
 ## Run locally
 
@@ -16,7 +17,7 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:3000/ and select **START CAMERA DEMO**, or choose
+Open http://localhost:3000/ and select **START AR TRACKING**, or choose
 **Try without a camera** for the desktop demo. The direct desktop URL is
 http://localhost:3000/?demo=1.
 
@@ -57,8 +58,9 @@ not replace testing Safari and a real camera on an iPhone.
 
 ## Deployment
 
-See [stage-one setup and phone checklist](docs/STAGE-ONE-TESTING.md) for the initial
-rollout and exact testing steps.
+See the [Stage 2 phone checklist](docs/STAGE-TWO-TESTING.md) for the current tracking
+acceptance test. The [Stage 1 checklist](docs/STAGE-ONE-TESTING.md) remains the camera
+and deployment reference.
 
 - Production: https://samis0707.github.io/holy-penny/
 - Feature previews: `/holy-penny/preview/<readable-branch>-<hash>/`
@@ -80,8 +82,9 @@ Do not edit `pages-content` manually.
 
 - `src/app/App.ts`: session setup, camera background, scene, UI and game wiring.
 - `src/tracking/CameraSource.ts`: camera permission and video playback.
-- `src/tracking/SimulationTrackingProvider.ts`: explicit stage-one fixed pose.
-- `src/tracking/AlvaTrackingProvider.ts`: unused legacy placeholder; real integration is pending.
+- `src/tracking/SimulationTrackingProvider.ts`: explicit desktop fixed pose.
+- `src/tracking/AlvaTrackingProvider.ts`: camera frames, AlvaAR runtime, poses and state transitions.
+- `src/rendering/TrackingAnchor.ts`: fixed cube used to judge drift and recovery.
 - `src/rendering/CameraBackground.ts`: screen-aligned video behind transparent WebGL.
 - `src/rendering/ARWorld.ts`: placement math.
 - `src/game/`: coin, beacon, player and collection state.
@@ -96,5 +99,6 @@ The original longer-term roadmap is in [IMPLEMENTIERUNGSPLAN.md](docs/IMPLEMENTI
 
 ## License
 
-The package currently declares MIT. The planned AlvaAR dependency has its own
-license; review that when adding the actual runtime.
+Holy Penny's original code is MIT. The vendored AlvaAR runtime is GPL-3.0 and has
+separate license and source-provenance files. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+before distributing a build that includes it.
