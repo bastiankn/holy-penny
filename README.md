@@ -60,7 +60,7 @@ not replace testing Safari and a real camera on an iPhone.
 See [stage-one setup and phone checklist](docs/STAGE-ONE-TESTING.md) for the initial
 rollout and exact testing steps.
 
-- Production: https://samis0707.github.io/holy-penny/
+- Production: https://bastiankn.github.io/holy-penny/
 - Feature previews: `/holy-penny/preview/<readable-branch>-<hash>/`
 - Supported branches: `main`, `feature/**`, `codex/**`.
 - Every successful deployment records its URL and commit in the Actions summary.

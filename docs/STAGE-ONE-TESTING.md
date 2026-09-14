@@ -78,7 +78,7 @@ A repository administrator may need to perform the settings steps.
    and publishes the combined site. Do not manually create that branch.
 7. Open **Actions → Deploy to GitHub Pages → the successful main run** and use
    the **Test URL** in its summary. Production is
-   https://samis0707.github.io/holy-penny/.
+   https://bastiankn.github.io/holy-penny/.
 8. Add branch protection/rules for `main`: require a pull request and the `checks`
    status. Do not require the publishing job to pass before a PR can merge.
 9. Update any existing development branches from the new main before pushing them,
@@ -129,7 +129,7 @@ Preview names contain a short hash to prevent collisions such as `feature/a-b`
 and `feature/a/b`. To calculate one locally:
 
 ```bash
-node scripts/pages.mjs target codex/stage-one samis0707/holy-penny
+node scripts/pages.mjs target codex/stage-one bastiankn/holy-penny
 ```
 
 Do not use a feature preview URL before its workflow succeeds. If a deployment
