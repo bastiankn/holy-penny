@@ -1,10 +1,10 @@
-name: Deploy Astro site to Pages
+name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    branches: [main, 'feature/**', 'codex/**']
+  delete:
+    branches: ['feature/**', 'codex/**']
   workflow_dispatch:
 
 permissions:
@@ -17,10 +17,107 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
     steps:
-      - name: Checkout
+      - name: Checkout source
+        if: github.event_name != 'delete'
         uses: actions/checkout@v4
+
+      - name: Checkout source for branch cleanup
+        if: github.event_name == 'delete'
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
       - name: Setup Node
         uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        if: github.event_name != 'delete'
+        run: npm ci
+
+      - name: Resolve deployment target
+        id: meta
+        run: node scripts/pages.mjs metadata
+
+      - name: Build
+        if: github.event_name != 'delete'
+        run: npm run build
+        env:
+          BASE_PATH: ${{ steps.meta.outputs.base }}
+          BUILD_COMMIT: ${{ github.sha }}
+
+      - name: Configure git
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+      - name: Prepare persistent site worktree
+        run: |
+          git fetch origin pages-content || true
+          if git show-ref --verify --quiet refs/remotes/origin/pages-content; then
+            git worktree add -B pages-content site origin/pages-content
+          else
+            git worktree add -B pages-content site HEAD
+          fi
+
+      - name: Assemble site
+        run: node scripts/pages.mjs assemble site dist
+        env:
+          DEPLOY_BRANCH: ${{ steps.meta.outputs.branch }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+
+      - name: Push pages-content
+        run: |
+          cd site
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No site changes to push."
+          else
+            git commit -m "Deploy ${{ steps.meta.outputs.branch }} (${{ github.sha }})"
+            git push -u origin pages-content
+          fi
+
+      - name: Stage Pages artifact
+        run: |
+          rm -rf public
+          mkdir public
+          cp -r site/. public/
+          rm -rf public/.git
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: public
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Summarize
+        run: |
+          {
+            echo "## Deployment"
+            echo ""
+            echo "- Branch: \`${{ steps.meta.outputs.branch }}\`"
+            echo "- Commit: \`${{ github.sha }}\`"
+            echo "- Production: https://samis0707.github.io/holy-penny/"
+            if [ "${{ github.event_name }}" = "delete" ]; then
+              echo "- Removed preview: \`${{ steps.meta.outputs.directory }}\`"
+              echo "- Test URL: n/a (preview removed)"
+            elif [ -z "${{ steps.meta.outputs.directory }}" ]; then
+              echo "- Test URL: ${{ steps.deployment.outputs.page_url }}"
+            else
+              echo "- Test URL: ${{ steps.deployment.outputs.page_url }}${{ steps.meta.outputs.directory }}/"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
