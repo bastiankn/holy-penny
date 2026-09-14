@@ -17,6 +17,8 @@
  *   affects it.
  */
 
+import { hasPositionAttribute } from '../utils/threeGeometry';
+
 export interface CoinOptions {
   radius?: number;
   height?: number;
@@ -235,7 +237,10 @@ export class Coin {
   private createProceduralMesh(THREE: typeof import('three')): unknown {
     try {
       const geometry = new THREE.CylinderGeometry(this.radius, this.radius, this.coinHeight, 32);
-      if (!geometry.getAttribute('position')) {
+      // Real three.js BufferGeometry exposes the position via
+      // getAttribute('position') / attributes — NOT as a direct `position`
+      // property (see utils/threeGeometry).
+      if (!hasPositionAttribute(geometry)) {
         return null;
       }
       if (typeof (geometry as { rotateX?: unknown }).rotateX === 'function') {

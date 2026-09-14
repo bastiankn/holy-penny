@@ -14,6 +14,8 @@
  * - `dispose` is idempotent.
  */
 
+import { hasPositionAttribute } from '../utils/threeGeometry';
+
 export interface BeaconOptions {
   height?: number;
   radius?: number;
@@ -169,7 +171,10 @@ export class Beacon {
         1,
         true
       );
-      if (!geometry.getAttribute('position')) {
+      // Real three.js BufferGeometry exposes the position via
+      // getAttribute('position') / attributes — NOT as a direct `position`
+      // property (see utils/threeGeometry).
+      if (!hasPositionAttribute(geometry)) {
         return null;
       }
       const material = new THREE.MeshBasicMaterial({
