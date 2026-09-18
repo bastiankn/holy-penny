@@ -2,11 +2,12 @@
 
 A browser-based coin game built with TypeScript, Vite and Three.js.
 
-**Current milestone: Stage 2 AlvaAR tracking spike.** The camera route now sends a
+**Current milestone: Stage 3 AR world placement.** The camera route sends a
 reduced-resolution video frame through the pinned AlvaAR runtime, applies real poses
-to the Three.js camera, and places a simple cube for stability testing. The coin game
-is intentionally paused on this route until physical iPhone testing gives a tracking
-go/no-go result. `?demo=1` remains the explicitly simulated desktop demo.
+to the Three.js camera, and places a neutral target once, 2.5 metres ahead of the
+first active pose. The target then remains fixed while the camera moves. The coin
+game stays paused on this route until placement passes physical iPhone testing;
+`?demo=1` remains the explicitly simulated desktop demo.
 
 ## Run locally
 
@@ -17,7 +18,7 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:3000/ and select **START AR TRACKING**, or choose
+Open http://localhost:3000/ and select **START AR PLACEMENT**, or choose
 **Try without a camera** for the desktop demo. The direct desktop URL is
 http://localhost:3000/?demo=1.
 
@@ -58,9 +59,10 @@ not replace testing Safari and a real camera on an iPhone.
 
 ## Deployment
 
-See the [Stage 2 phone checklist](docs/STAGE-TWO-TESTING.md) for the current tracking
-acceptance test. The [Stage 1 checklist](docs/STAGE-ONE-TESTING.md) remains the camera
-and deployment reference.
+See the [Stage 3 phone checklist](docs/STAGE-THREE-TESTING.md) for the current world
+placement acceptance test. The [Stage 2 checklist](docs/STAGE-TWO-TESTING.md) remains
+the tracking reference, and the [Stage 1 checklist](docs/STAGE-ONE-TESTING.md) remains
+the camera and deployment reference.
 
 - Production: https://bastiankn.github.io/holy-penny/
 - Feature previews: `/holy-penny/preview/<readable-branch>-<hash>/`
@@ -84,7 +86,7 @@ Do not edit `pages-content` manually.
 - `src/tracking/CameraSource.ts`: camera permission and video playback.
 - `src/tracking/SimulationTrackingProvider.ts`: explicit desktop fixed pose.
 - `src/tracking/AlvaTrackingProvider.ts`: camera frames, AlvaAR runtime, poses and state transitions.
-- `src/rendering/TrackingAnchor.ts`: fixed cube used to judge drift and recovery.
+- `src/rendering/WorldPlacementMarker.ts`: one-time neutral target for world-placement checks.
 - `src/rendering/CameraBackground.ts`: screen-aligned video behind transparent WebGL.
 - `src/rendering/ARWorld.ts`: placement math.
 - `src/game/`: coin, beacon, player and collection state.

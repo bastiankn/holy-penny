@@ -61,7 +61,7 @@ test('camera permission, portrait/landscape feed and graphics work together', as
   const runtimeLoaded = page.waitForResponse((response) =>
     response.url().endsWith('/vendor/alvaar/alva_ar.js')
   );
-  await page.getByRole('button', { name: 'START AR TRACKING' }).click();
+  await page.getByRole('button', { name: 'START AR PLACEMENT' }).click();
   expect((await runtimeLoaded).status()).toBe(200);
   const video = page.getByTestId('camera-background');
   await expect(video).toBeVisible();
@@ -89,9 +89,9 @@ test('camera permission, portrait/landscape feed and graphics work together', as
 
 test('denied camera permission leaves a usable retry and desktop demo', async ({ page }) => {
   await page.goto('');
-  await page.getByRole('button', { name: 'START AR TRACKING' }).click();
+  await page.getByRole('button', { name: 'START AR PLACEMENT' }).click();
   await expect(page.getByText(/AR start failed:/)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'START AR TRACKING' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'START AR PLACEMENT' })).toBeEnabled();
   await page.getByRole('link', { name: 'Try without a camera' }).click();
   await page.getByRole('button', { name: 'START DESKTOP DEMO' }).click();
   await expect(page.getByTestId('tracking-state')).toContainText('SIMULATED');

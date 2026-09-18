@@ -1,9 +1,10 @@
-> Status September 2026: Stage two implements the real AlvaAR tracking spike on a
-> separate branch. The camera route uses a reduced tracking frame, applies AlvaAR
-> poses to Three.js, and displays a fixed cube plus tracking diagnostics. Physical
-> iPhone validation remains the go/no-go gate; see
-> [STAGE-TWO-TESTING.md](STAGE-TWO-TESTING.md). The simulated desktop route remains
-> available at `?demo=1`.
+> Status September 2026: Stage three implements one-time AR world placement on a
+> separate branch. The camera route uses the accepted AlvaAR tracking pipeline and
+> places a neutral target 2.5 metres ahead of the first active pose. The target is
+> fixed in world coordinates and hidden during tracking loss. Physical iPhone
+> validation remains the gate before enabling the gold coin; see
+> [STAGE-THREE-TESTING.md](STAGE-THREE-TESTING.md). The simulated desktop route
+> remains available at `?demo=1`.
 
 Implementierungsplan – WebAR Coin Game
 
