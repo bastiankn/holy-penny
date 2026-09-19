@@ -7,7 +7,7 @@ import type { TrackingProvider, CameraPose } from '../tracking/TrackingProvider'
 import { SimulationTrackingProvider } from '../tracking/SimulationTrackingProvider';
 import { AlvaTrackingProvider, alvaVerticalFieldOfView } from '../tracking/AlvaTrackingProvider';
 import { CameraBackground } from '../rendering/CameraBackground';
-import { WorldPlacementMarker } from '../rendering/WorldPlacementMarker';
+import { WorldCoinPlacement } from '../rendering/WorldCoinPlacement';
 import { StartScreen } from '../ui/StartScreen';
 import { HUD } from '../ui/HUD';
 import { TrackingStatus } from '../ui/TrackingStatus';
@@ -39,6 +39,8 @@ export interface AppCameraSource {
 /** GameCoin plus the optional visual tick the real Coin provides. */
 export interface AppCoin extends GameCoin {
   update?(dtSec: number, elapsedSec: number): void;
+  setOrientationYaw?(yaw: number): void;
+  setVisible(visible: boolean): void;
   dispose?(): void;
 }
 
@@ -117,9 +119,9 @@ export class App {
   private background: CameraBackground | null = null;
   private readonly cameraEnabled: boolean;
   private readonly simulated: boolean;
-  private readonly worldPlacementMode: boolean;
+  private readonly coinPreviewMode: boolean;
   private readonly trackingSize: { width: number; height: number };
-  private worldPlacementMarker: WorldPlacementMarker | null = null;
+  private worldCoinPlacement: WorldCoinPlacement | null = null;
   private trackingGuide: HTMLElement | null = null;
   private rendererError: Error | null = null;
   private animationFrameId = 0;
@@ -166,7 +168,7 @@ export class App {
 
   constructor(options: AppOptions = {}) {
     this.cameraEnabled = options.cameraEnabled ?? true;
-    this.worldPlacementMode = options.tracking === undefined && this.cameraEnabled;
+    this.coinPreviewMode = options.tracking === undefined && this.cameraEnabled;
     this.trackingSize = this.getInitialTrackingSize();
     this.cameraSource = options.cameraSource
       ? options.cameraSource
@@ -190,11 +192,11 @@ export class App {
     this.simulated = this.tracking instanceof SimulationTrackingProvider;
     this.player = options.player ?? new Player();
     this.world = options.world ?? new ARWorld();
-    if (this.worldPlacementMode && this.world instanceof ARWorld && !isTestEnv()) {
-      this.worldPlacementMarker = new WorldPlacementMarker(this.scene, this.world);
+    this.coin = options.coin ?? new Coin(this.scene, { glbUrl: null });
+    if (this.coinPreviewMode && this.world instanceof ARWorld && !isTestEnv()) {
+      this.worldCoinPlacement = new WorldCoinPlacement(this.world, this.coin);
       this.trackingGuide = this.createTrackingGuide();
     }
-    this.coin = options.coin ?? new Coin(this.scene, { glbUrl: null });
     this.beacon = options.beacon ?? new Beacon(this.scene);
     this.hud =
       options.hud ??
@@ -226,10 +228,10 @@ export class App {
     // Initialize UI
     this.startScreen = new StartScreen({
       onStart: () => this.startAR(),
-      buttonText: this.cameraEnabled ? 'START AR PLACEMENT' : 'START DESKTOP DEMO',
+      buttonText: this.cameraEnabled ? 'START AR COIN' : 'START DESKTOP DEMO',
       description: this.simulated
         ? 'Simulated position — room tracking is not connected.'
-        : 'AlvaAR world placement — move slowly until the target appears.',
+        : 'AlvaAR gold coin — move slowly until the coin appears.',
       buildCommit: options.buildCommit,
       alternateHref: this.cameraEnabled ? '?demo=1' : '?',
       alternateText: this.cameraEnabled ? 'Try without a camera' : 'Use the camera instead',
@@ -266,7 +268,7 @@ export class App {
 
       // Camera
       const aspect = window.innerWidth / window.innerHeight;
-      const fieldOfView = this.worldPlacementMode
+      const fieldOfView = this.coinPreviewMode
         ? alvaVerticalFieldOfView(this.trackingSize.width, this.trackingSize.height, 45)
         : 75;
       this.camera = new THREE.PerspectiveCamera(fieldOfView, aspect, 0.1, 1000);
@@ -398,7 +400,7 @@ export class App {
     if (this.trackingGuide === null) return;
     if (state === 'ACTIVE') {
       this.trackingGuide.textContent =
-        'Target placed 2.5 m ahead — move sideways and check that it stays fixed.';
+        'Gold coin placed 2.5 m ahead — check that it spins, floats, and stays fixed.';
     } else if (state === 'LOST') {
       this.trackingGuide.textContent = 'Tracking lost — return to the last view and move slowly.';
     } else {
@@ -484,7 +486,7 @@ export class App {
 
     this.background?.hide();
     this.background = null;
-    this.worldPlacementMarker?.reset();
+    this.worldCoinPlacement?.reset();
 
     // Hide overlays
     this.setOverlaysVisible(false);
@@ -520,12 +522,14 @@ export class App {
       const pose = this.tracking.getPose();
       if (pose) {
         this.applyPoseToCamera(pose);
-        this.worldPlacementMarker?.placeFromFirstPose(pose);
+        this.worldCoinPlacement?.placeFromFirstPose(pose);
       }
       const trackingState = this.tracking.getState();
-      this.worldPlacementMarker?.setTrackingVisible(trackingState === 'ACTIVE');
+      this.worldCoinPlacement?.setTrackingVisible(trackingState === 'ACTIVE');
       this.status.setTracking(trackingState, this.buildTrackingInfo(pose));
-      if (!this.worldPlacementMode) {
+      if (this.coinPreviewMode) {
+        this.worldCoinPlacement?.update(dt, this.elapsedSec);
+      } else {
         this.coin.update?.(dt, this.elapsedSec);
         this.beacon.update?.(dt, this.elapsedSec);
         this.game.update(dt);
@@ -587,13 +591,13 @@ export class App {
   private setOverlaysVisible(visible: boolean): void {
     const display = visible ? 'flex' : 'none';
     if (this.hud.element) {
-      this.hud.element.style.display = visible && !this.worldPlacementMode ? 'flex' : 'none';
+      this.hud.element.style.display = visible && !this.coinPreviewMode ? 'flex' : 'none';
     }
     if (this.status.element) {
       this.status.element.style.display = display;
     }
     if (this.trackingGuide) {
-      this.trackingGuide.style.display = visible && this.worldPlacementMode ? 'block' : 'none';
+      this.trackingGuide.style.display = visible && this.coinPreviewMode ? 'block' : 'none';
     }
   }
 
@@ -646,8 +650,7 @@ export class App {
     } catch {
       // Ignore teardown failures.
     }
-    this.worldPlacementMarker?.dispose();
-    this.worldPlacementMarker = null;
+    this.worldCoinPlacement = null;
     this.trackingGuide?.remove();
     this.trackingGuide = null;
 

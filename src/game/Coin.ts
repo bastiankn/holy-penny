@@ -136,6 +136,15 @@ export class Coin {
     this.syncVisual();
   }
 
+  /** Face the coin toward the placement camera before its spin begins. */
+  setOrientationYaw(yaw: number): void {
+    if (!Number.isFinite(yaw)) {
+      return;
+    }
+    this.rotationY = yaw;
+    this.syncVisual();
+  }
+
   /**
    * Collect the coin. Returns `true` exactly once per placement,
    * `false` before spawning or after collection.
@@ -236,7 +245,7 @@ export class Coin {
 
   private createProceduralMesh(THREE: typeof import('three')): unknown {
     try {
-      const geometry = new THREE.CylinderGeometry(this.radius, this.radius, this.coinHeight, 32);
+      const geometry = new THREE.CylinderGeometry(this.radius, this.radius, this.coinHeight, 48);
       // Real three.js BufferGeometry exposes the position via
       // getAttribute('position') / attributes — NOT as a direct `position`
       // property (see utils/threeGeometry).
@@ -247,10 +256,11 @@ export class Coin {
         (geometry as { rotateX: (angle: number) => void }).rotateX(Math.PI / 2);
       }
       const material = new THREE.MeshStandardMaterial({
-        color: 0xffc93c,
-        // A partially diffuse material stays visible without an environment map.
-        metalness: 0.35,
-        roughness: 0.4,
+        color: 0xffd447,
+        emissive: 0x3a2100,
+        emissiveIntensity: 0.35,
+        metalness: 0.7,
+        roughness: 0.25,
       });
       const mesh = new THREE.Mesh(geometry, material);
       if (!isObject(mesh) || !('position' in mesh) || !('rotation' in mesh)) {

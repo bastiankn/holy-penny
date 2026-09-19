@@ -45,6 +45,7 @@ function makeFakes() {
     isPlaced: jest.fn().mockReturnValue(false),
     getPosition: jest.fn().mockReturnValue(null),
     update: jest.fn(),
+    setVisible: jest.fn(),
     dispose: jest.fn(),
   };
   const beacon = {

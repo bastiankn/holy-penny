@@ -10,17 +10,21 @@ describe('real Three.js visuals', () => {
   it('adds a visible gold mesh, animates it, collects it and disposes it', async () => {
     const scene = new THREE.Scene();
     const coin = new Coin(scene, { glbUrl: null });
+    coin.setOrientationYaw(0.75);
     coin.spawn({ x: 1, y: 0, z: -2.5 });
     await flushImports();
     expect(scene.children).toHaveLength(1);
     const mesh = scene.children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
     expect(mesh.isMesh).toBe(true);
     expect(mesh.geometry.getAttribute('position').count).toBeGreaterThan(0);
-    expect(mesh.material.color.getHex()).toBe(0xffc93c);
+    expect(mesh.material.color.getHex()).toBe(0xffd447);
+    expect(mesh.material.metalness).toBeCloseTo(0.7);
+    expect(mesh.material.roughness).toBeCloseTo(0.25);
     expect(mesh.position.toArray()).toEqual([1, 0, -2.5]);
+    expect(mesh.rotation.y).toBeCloseTo(0.75);
     expect(mesh.visible).toBe(true);
     coin.update(0.5, 0.5);
-    expect(mesh.rotation.y).toBeCloseTo(1);
+    expect(mesh.rotation.y).toBeCloseTo(1.75);
     expect(mesh.position.y).not.toBe(0);
     coin.collect();
     expect(mesh.visible).toBe(false);

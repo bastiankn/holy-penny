@@ -2,12 +2,12 @@
 
 A browser-based coin game built with TypeScript, Vite and Three.js.
 
-**Current milestone: Stage 3 AR world placement.** The camera route sends a
+**Current milestone: Stage 4 gold coin.** The camera route sends a
 reduced-resolution video frame through the pinned AlvaAR runtime, applies real poses
-to the Three.js camera, and places a neutral target once, 2.5 metres ahead of the
-first active pose. The target then remains fixed while the camera moves. The coin
-game stays paused on this route until placement passes physical iPhone testing;
-`?demo=1` remains the explicitly simulated desktop demo.
+to the Three.js camera, and places an animated procedural gold coin once, 2.5 metres
+ahead of the first active pose. The coin rotates and floats while its world anchor
+stays fixed. Beacon and collection remain paused on this route until the coin passes
+physical iPhone testing; `?demo=1` remains the explicitly simulated desktop demo.
 
 ## Run locally
 
@@ -18,7 +18,7 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:3000/ and select **START AR PLACEMENT**, or choose
+Open http://localhost:3000/ and select **START AR COIN**, or choose
 **Try without a camera** for the desktop demo. The direct desktop URL is
 http://localhost:3000/?demo=1.
 
@@ -59,10 +59,10 @@ not replace testing Safari and a real camera on an iPhone.
 
 ## Deployment
 
-See the [Stage 3 phone checklist](docs/STAGE-THREE-TESTING.md) for the current world
-placement acceptance test. The [Stage 2 checklist](docs/STAGE-TWO-TESTING.md) remains
-the tracking reference, and the [Stage 1 checklist](docs/STAGE-ONE-TESTING.md) remains
-the camera and deployment reference.
+See the [Stage 4 phone checklist](docs/STAGE-FOUR-TESTING.md) for the current gold
+coin acceptance test. The [Stage 3 checklist](docs/STAGE-THREE-TESTING.md) remains
+the world-placement reference, and the earlier checklists remain the tracking,
+camera, and deployment references.
 
 - Production: https://bastiankn.github.io/holy-penny/
 - Feature previews: `/holy-penny/preview/<readable-branch>-<hash>/`
@@ -86,7 +86,7 @@ Do not edit `pages-content` manually.
 - `src/tracking/CameraSource.ts`: camera permission and video playback.
 - `src/tracking/SimulationTrackingProvider.ts`: explicit desktop fixed pose.
 - `src/tracking/AlvaTrackingProvider.ts`: camera frames, AlvaAR runtime, poses and state transitions.
-- `src/rendering/WorldPlacementMarker.ts`: one-time neutral target for world-placement checks.
+- `src/rendering/WorldCoinPlacement.ts`: one-time tracked coin placement and visibility.
 - `src/rendering/CameraBackground.ts`: screen-aligned video behind transparent WebGL.
 - `src/rendering/ARWorld.ts`: placement math.
 - `src/game/`: coin, beacon, player and collection state.
@@ -94,7 +94,7 @@ Do not edit `pages-content` manually.
 - `scripts/pages.mjs`: preview paths and preservation of shared Pages content.
 - `tests/browser/`: tests of the built site with real WebGL in Chromium.
 
-The demo uses the procedural coin and does not request the absent optional GLB.
+Both routes use the procedural coin and do not request the absent optional GLB.
 A custom model can be enabled with `CoinOptions.glbUrl`; see `public/models/`.
 The optional collect sound is also not included yet; see `public/sounds/`.
 The original longer-term roadmap is in [IMPLEMENTIERUNGSPLAN.md](docs/IMPLEMENTIERUNGSPLAN.md).

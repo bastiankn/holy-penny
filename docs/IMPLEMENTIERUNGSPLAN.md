@@ -1,9 +1,8 @@
-> Status September 2026: Stage three implements one-time AR world placement on a
-> separate branch. The camera route uses the accepted AlvaAR tracking pipeline and
-> places a neutral target 2.5 metres ahead of the first active pose. The target is
-> fixed in world coordinates and hidden during tracking loss. Physical iPhone
-> validation remains the gate before enabling the gold coin; see
-> [STAGE-THREE-TESTING.md](STAGE-THREE-TESTING.md). The simulated desktop route
+> Status September 2026: Stage four replaces the accepted placement target with a
+> procedural gold coin. The camera route places it 2.5 metres ahead of the first
+> active pose, keeps its logical world anchor fixed, and adds rotation plus gentle
+> floating. Physical iPhone validation remains the gate before enabling the beacon;
+> see [STAGE-FOUR-TESTING.md](STAGE-FOUR-TESTING.md). The simulated desktop route
 > remains available at `?demo=1`.
 
 Implementierungsplan – WebAR Coin Game
