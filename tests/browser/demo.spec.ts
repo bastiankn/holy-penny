@@ -54,16 +54,25 @@ test('camera permission, portrait/landscape feed and graphics work together', as
   page,
   context,
 }, testInfo) => {
+  testInfo.setTimeout(60_000);
   const errors = watchErrors(page);
   await context.grantPermissions(['camera']);
   await page.goto('');
-  await page.getByRole('button', { name: 'START CAMERA DEMO' }).click();
+  const runtimeLoaded = page.waitForResponse((response) =>
+    response.url().endsWith('/vendor/alvaar/alva_ar.js')
+  );
+  await page.getByRole('button', { name: 'START AR PLACEMENT' }).click();
+  expect((await runtimeLoaded).status()).toBe(200);
   const video = page.getByTestId('camera-background');
   await expect(video).toBeVisible();
   await expect
     .poll(() => video.evaluate((element: HTMLVideoElement) => element.videoWidth))
     .toBeGreaterThan(0);
-  await expect(page.getByTestId('tracking-state')).toContainText('SIMULATED');
+  await expect(page.getByTestId('tracking-state')).toHaveText(
+    /Tracking: (INITIALIZING|ACTIVE|LOST)/
+  );
+  await expect(page.getByTestId('tracking-guide')).toBeVisible();
+  await expect(page.getByTestId('hud')).toBeHidden();
   for (const viewport of [
     { width: 390, height: 844 },
     { width: 844, height: 390 },
@@ -80,9 +89,9 @@ test('camera permission, portrait/landscape feed and graphics work together', as
 
 test('denied camera permission leaves a usable retry and desktop demo', async ({ page }) => {
   await page.goto('');
-  await page.getByRole('button', { name: 'START CAMERA DEMO' }).click();
+  await page.getByRole('button', { name: 'START AR PLACEMENT' }).click();
   await expect(page.getByText(/AR start failed:/)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'START CAMERA DEMO' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'START AR PLACEMENT' })).toBeEnabled();
   await page.getByRole('link', { name: 'Try without a camera' }).click();
   await page.getByRole('button', { name: 'START DESKTOP DEMO' }).click();
   await expect(page.getByTestId('tracking-state')).toContainText('SIMULATED');

@@ -1,8 +1,10 @@
-> Status September 2026: Stage one provides an explicitly simulated camera/rendering
-> demo. Real AlvaAR tracking remains pending. The current setup, implemented
-> deployment behavior, and acceptance checks are documented in
-> [STAGE-ONE-TESTING.md](STAGE-ONE-TESTING.md). Preview paths include a short hash
-> to avoid branch-name collisions. The plan below describes the broader target.
+> Status September 2026: Stage three implements one-time AR world placement on a
+> separate branch. The camera route uses the accepted AlvaAR tracking pipeline and
+> places a neutral target 2.5 metres ahead of the first active pose. The target is
+> fixed in world coordinates and hidden during tracking loss. Physical iPhone
+> validation remains the gate before enabling the gold coin; see
+> [STAGE-THREE-TESTING.md](STAGE-THREE-TESTING.md). The simulated desktop route
+> remains available at `?demo=1`.
 
 Implementierungsplan – WebAR Coin Game
 
